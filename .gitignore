@@ -1,0 +1,20 @@
+# 后端本机密钥（application-local.yml.example 可提交）
+ai-customer-service-backend/src/main/resources/application-local.yml
+
+# 后端运行时产物与上传
+ai-customer-service-backend/target/
+ai-customer-service-backend/uploads/
+ai-customer-service-backend/.idea/
+
+# 前端
+ai-customer-service-frontend/node_modules/
+ai-customer-service-frontend/dist/
+
+# IDE / 系统
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+*.log
+

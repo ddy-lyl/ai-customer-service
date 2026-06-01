@@ -1,0 +1,142 @@
+[
+  {
+    "id": "q01",
+    "question": "七天无理由退货需要什么条件",
+    "expectedKeywords": ["7天", "七天", "签收", "完好"],
+    "sampleAnswerSnippet": "签收后7天内且商品完好可申请七天无理由退货",
+    "goldDoc": "01-售后"
+  },
+  {
+    "id": "q02",
+    "question": "退款多久到账",
+    "expectedKeywords": ["退款", "3", "5", "工作日"],
+    "sampleAnswerSnippet": "退款审核通过后3-5个工作日原路退回",
+    "goldDoc": "02-退款"
+  },
+  {
+    "id": "q03",
+    "question": "质量问题如何换货",
+    "expectedKeywords": ["换货", "质检", "运费"],
+    "sampleAnswerSnippet": "质量问题经质检确认后由平台承担运费换货",
+    "goldDoc": "03-换货"
+  },
+  {
+    "id": "q04",
+    "question": "物流丢件怎么办",
+    "expectedKeywords": ["丢件", "补发", "退款"],
+    "sampleAnswerSnippet": "物流丢件核实后可补发或全额退款",
+    "goldDoc": "04-物流"
+  },
+  {
+    "id": "q05",
+    "question": "发票如何开具",
+    "expectedKeywords": ["发票", "电子", "订单"],
+    "sampleAnswerSnippet": "订单完成后可在订单详情申请电子发票",
+    "goldDoc": "05-发票"
+  },
+  {
+    "id": "q06",
+    "question": "拒收后运费谁承担",
+    "expectedKeywords": ["拒收", "运费", "买家"],
+    "sampleAnswerSnippet": "非质量问题拒收由买家承担退回运费",
+    "goldDoc": "06-拒收"
+  },
+  {
+    "id": "q07",
+    "question": "配件缺失能否补发",
+    "expectedKeywords": ["配件", "补发"],
+    "sampleAnswerSnippet": "配件缺失核实后免费补发缺失配件",
+    "goldDoc": "07-配件"
+  },
+  {
+    "id": "q08",
+    "question": "保修期多久",
+    "expectedKeywords": ["保修", "12", "一年"],
+    "sampleAnswerSnippet": "电子产品默认保修12个月",
+    "goldDoc": "08-保修"
+  },
+  {
+    "id": "q09",
+    "question": "退货退款流程是怎样的",
+    "expectedKeywords": ["退货", "审核", "验收", "退款"],
+    "sampleAnswerSnippet": "提交申请、审核、寄回、验收、退款",
+    "goldDoc": "01-售后"
+  },
+  {
+    "id": "q10",
+    "question": "哪些商品不能七天无理由退货",
+    "expectedKeywords": ["定制", "生鲜", "虚拟", "贴身"],
+    "sampleAnswerSnippet": "定制类、生鲜、虚拟商品等不支持无理由退货",
+    "goldDoc": "01-售后"
+  },
+  {
+    "id": "q11",
+    "question": "换货质检要多久",
+    "expectedKeywords": ["质检", "1", "2", "工作日"],
+    "sampleAnswerSnippet": "仓库签收后1-2个工作日完成质检",
+    "goldDoc": "03-换货"
+  },
+  {
+    "id": "q12",
+    "question": "物流一直不更新怎么办",
+    "expectedKeywords": ["物流", "72", "客服"],
+    "sampleAnswerSnippet": "超过72小时无更新请联系客服",
+    "goldDoc": "04-物流"
+  },
+  {
+    "id": "q13",
+    "question": "电子发票多久能开出来",
+    "expectedKeywords": ["发票", "1", "3", "工作日"],
+    "sampleAnswerSnippet": "申请后1-3个工作日开具",
+    "goldDoc": "05-发票"
+  },
+  {
+    "id": "q14",
+    "question": "质量问题退货运费谁出",
+    "expectedKeywords": ["质量问题", "运费", "平台"],
+    "sampleAnswerSnippet": "质量问题退货运费由平台承担",
+    "goldDoc": "01-售后"
+  },
+  {
+    "id": "q15",
+    "question": "错发商品怎么处理",
+    "expectedKeywords": ["错发", "补发", "退回"],
+    "sampleAnswerSnippet": "错发免费补发正确商品",
+    "goldDoc": "04-物流"
+  },
+  {
+    "id": "q16",
+    "question": "延保服务怎么算",
+    "expectedKeywords": ["延保", "保修", "2", "3"],
+    "sampleAnswerSnippet": "延保可延长保修至2-3年",
+    "goldDoc": "08-保修"
+  },
+  {
+    "id": "q17",
+    "question": "仅退款和退货退款有什么区别",
+    "expectedKeywords": ["仅退款", "退货退款"],
+    "sampleAnswerSnippet": "仅退款与退货退款的适用场景不同",
+    "goldDoc": "02-退款"
+  },
+  {
+    "id": "q18",
+    "question": "仓库验收要几天",
+    "expectedKeywords": ["验收", "1", "2", "工作日"],
+    "sampleAnswerSnippet": "仓库验收1-2个工作日",
+    "goldDoc": "02-退款"
+  },
+  {
+    "id": "q19",
+    "question": "专票怎么开",
+    "expectedKeywords": ["增值税", "专票", "税号"],
+    "sampleAnswerSnippet": "企业可申请电子增值税专用发票",
+    "goldDoc": "05-发票"
+  },
+  {
+    "id": "q20",
+    "question": "超过售后期限还能售后吗",
+    "expectedKeywords": ["售后期限", "拒绝"],
+    "sampleAnswerSnippet": "超过售后期限平台有权拒绝受理",
+    "goldDoc": "08-保修"
+  }
+]

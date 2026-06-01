@@ -1,0 +1,118 @@
+# =============================================================================
+# 公共配置（可提交 Git）— 不含数据库密码与 API Key
+# 本机开发默认 profile：dev（见 application-dev.yml）
+# 密钥请写在 application-local.yml（见 application-local.yml.example）
+# =============================================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-customer-service-backend
+  profiles:
+    active: dev
+
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+  ai:
+    model:
+      chat: deepseek
+      embedding: openai
+    deepseek:
+      base-url: https://api.deepseek.com
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.2
+    openai:
+      # 末尾保留 /，embedding 使用相对路径 embeddings，避免拼成 .../v1/embeddings 时 URI 解析到 .../dashscope.aliyuncs.com/v1/embeddings（404）
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1/
+      chat:
+        enabled: false
+      embedding:
+        embeddings-path: embeddings
+        options:
+          model: text-embedding-v3
+
+file:
+  upload:
+    knowledge-dir: ./uploads/knowledge
+
+vector:
+  store:
+    simple-store-path: ./uploads/vector-store/knowledge-vector-store.json
+    embedding-model-name: text-embedding-v3
+
+mybatis-plus:
+  type-aliases-package: com.ddy.aicustomerservice.module.*.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+jwt:
+  expire-minutes: 120
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+ai-customer-service:
+  retrieval:
+    rerank-enabled: true
+    coarse-top-k-multiplier: 4
+    max-coarse-top-k: 20
+    coarse-threshold-delta: 0.15
+    vector-rrf-weight: 0.7
+  chat:
+    system-prompt: |
+      你是一名专业、礼貌、有耐心的售后智能客服助手。
+      优先依据知识库片段回答；涉及订单/工单必须调用工具，禁止编造；用简体中文简洁分点回答。
+    user-system-prompt: |
+      你是面向消费者的「云屿售后」智能客服。
+      能力：售后政策问答（退款/退货/换货/物流/发票）、查询本人订单状态与物流、查询本人工单进度、在无法解决时引导用户创建工单。
+      规则：
+      1. 优先依据【知识库片段】回答政策类问题；
+      2. 订单/工单问题必须调用 QUERY_ORDER、LIST_MY_ORDERS、QUERY_TICKET_STATUS、CREATE_TICKET，以工具 JSON 为准；
+      3. 创建工单(CREATE_TICKET)必须携带有效 orderNo；用户未说明订单号时先 LIST_MY_ORDERS 让用户选单，禁止空 orderNo 建单；
+      4. 可推荐用户尝试的相似常见问题（基于知识库），但不要编造订单号；
+      5. 简单问候、政策说明可自动回复，复杂纠纷建议建工单或转人工；
+      6. 全文使用简体中文，禁止繁体字，不要输出推理过程，简洁分点回答。
+    staff-system-prompt: |
+      你是「客服工作台 AI 助手」，服务对象是客服人员（不是终端消费者）。
+      能力：工单摘要、推荐回复话术、推荐处理方案（退款/换货/补发/升级人工）、按订单号查全平台订单上下文、查工单状态、列出待认领/我的工单、判断优先级（紧急/投诉/差评风险）。
+      规则：
+      1. 结合【知识库片段】给出专业、合规的回复建议，供客服复制修改后发送给用户；
+      2. 查订单用 QUERY_ORDER，查工单用 QUERY_TICKET_STATUS，列工单用 LIST_STAFF_TICKETS；
+      3. 不要代替客服承诺具体退款金额或时限；高风险投诉建议升级；
+      4. 可提示相似历史处理思路（基于知识库），但不要编造工单号；
+      5. 全文使用简体中文，禁止繁体字，条理清晰，适合客服快速阅读。
+    admin-system-prompt: |
+      你是「管理后台运营 AI 助手」，服务对象是系统管理员。
+      能力：知识库/FAQ 优化建议、热点问题分析、工单分类统计、AI 工具失败概览、运营数据解读；可按订单号查全平台订单、查任意工单。
+      规则：
+      1. 统计类问题必须调用 ADMIN_PLATFORM_OVERVIEW、ADMIN_HOT_QUESTIONS，禁止编造数字；
+      2. 对知识库重复、过期、表述不清给出可执行的优化建议；
+      3. 分析 AI 回答质量时，结合工具失败次数与热点问题，指出需补文档或调 prompt 的方向；
+      4. 敏感承诺、违规话术需明确标注风险；
+      5. 全文使用简体中文，禁止繁体字，偏运营报告风格，简洁有结论。
+  knowledge:
+    top-k: 4
+    similarity-threshold: 0.5
+  handoff:
+    enabled: true
+    rag-miss-auto: true
+    low-score-threshold: 0.55
+    repeat-miss-count: 2
+    user-keywords: 转人工,人工客服,找客服,真人,人工服务,要投诉
+    refusal-phrases: 无法回答,没有相关,建议联系人工,不清楚,无法确定,联系人工客服

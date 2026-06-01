@@ -1,0 +1,18 @@
+# =============================================================================
+# 本机密钥与密码（勿提交 Git）
+# 使用：复制本文件为 application-local.yml，填入真实值
+# 由 application-dev.yml 自动加载（optional import）
+# =============================================================================
+
+spring:
+  datasource:
+    password: your-mysql-password
+
+  ai:
+    deepseek:
+      api-key: your-deepseek-api-key
+    openai:
+      api-key: your-dashscope-api-key
+
+jwt:
+  secret: your-local-jwt-secret-at-least-32-characters-long

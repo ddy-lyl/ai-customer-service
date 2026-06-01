@@ -1,0 +1,39 @@
+# =============================================================================
+# dev — 本机开发（可提交 Git，不要写真实 Key / 数据库密码）
+# 启动：直接运行主类即可（profile 已在 application.yml 设为 dev）
+# =============================================================================
+
+spring:
+  config:
+    import: optional:classpath:application-local.yml
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:8090/customer-service-ai?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password:
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 3000ms
+
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    root: info
+    com.ddy.aicustomerservice: debug
+    org.springframework.web: info
+    org.springframework.ai: debug
