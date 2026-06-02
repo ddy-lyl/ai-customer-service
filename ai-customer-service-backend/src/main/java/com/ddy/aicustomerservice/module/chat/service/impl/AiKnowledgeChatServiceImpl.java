@@ -32,6 +32,7 @@ import com.ddy.aicustomerservice.module.chat.entity.ChatSession;
 import com.ddy.aicustomerservice.module.chat.mapper.ChatMessageMapper;
 import com.ddy.aicustomerservice.module.chat.mapper.ChatSessionMapper;
 import com.ddy.aicustomerservice.module.chat.service.AiKnowledgeChatService;
+import com.ddy.aicustomerservice.module.chat.support.ChatHistoryProvider;
 import com.ddy.aicustomerservice.module.chat.support.KnowledgePromptBuilder;
 import com.ddy.aicustomerservice.module.chat.vo.ChatMessageVO;
 import com.ddy.aicustomerservice.module.chat.vo.ChatSessionVO;
@@ -46,6 +47,7 @@ import com.ddy.aicustomerservice.module.retrieval.vo.RetrievedChunkVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -96,6 +98,8 @@ public class AiKnowledgeChatServiceImpl implements AiKnowledgeChatService {
     private final AiCustomerServiceProperties properties;
 
     private final LiveChatService liveChatService;
+
+    private final ChatHistoryProvider chatHistoryProvider;
 
     /**
      * 当前实际使用的对话模型名称
@@ -250,7 +254,12 @@ public class AiKnowledgeChatServiceImpl implements AiKnowledgeChatService {
             return emitter;
         }
 
-        Flux<String> tokenFlux = buildTokenFlux(request.getQuestionText(), retrievalResult);
+        Flux<String> tokenFlux = buildTokenFlux(
+                session.getId(),
+                userMessage.getId(),
+                request.getQuestionText(),
+                retrievalResult
+        );
 
         StringBuilder fullAnswer = new StringBuilder();
 
@@ -284,7 +293,9 @@ public class AiKnowledgeChatServiceImpl implements AiKnowledgeChatService {
      * Plan B：流式问答不挂载业务工具，避免工具上下文跨线程丢失。
      * 涉及订单/工单的请求建议走同步 ask 接口。
      */
-    private Flux<String> buildTokenFlux(String questionText,
+    private Flux<String> buildTokenFlux(Long sessionId,
+                                        Long currentUserMessageId,
+                                        String questionText,
                                         KnowledgeRetrievalResultVO retrievalResult) {
         String contextText = retrievalResult == null ? "" : retrievalResult.getContextText();
         RoleCodeEnum chatRole = RoleChatResolver.resolvePrimaryRole();
@@ -294,12 +305,9 @@ public class AiKnowledgeChatServiceImpl implements AiKnowledgeChatService {
         );
         String userPrompt = KnowledgePromptBuilder.buildUserPrompt(chatRole, questionText, contextText);
 
-        return chatClientBuilder.build()
-                .prompt()
-                .system(systemPrompt)
-                .user(userPrompt)
-                .stream()
-                .content();
+        var prompt = chatClientBuilder.build().prompt().system(systemPrompt);
+        applyChatHistory(prompt, sessionId, currentUserMessageId);
+        return prompt.user(userPrompt).stream().content();
     }
 
     private void handleStreamToken(SseEmitter emitter,
@@ -613,10 +621,9 @@ public class AiKnowledgeChatServiceImpl implements AiKnowledgeChatService {
         AiToolCallContext.set(new AiToolCallContextInfo(sessionId, userId, userMessageId));
 
         try {
-            String answer = chatClientBuilder.build()
-                    .prompt()
-                    .system(systemPrompt)
-                    .user(userPrompt)
+            var prompt = chatClientBuilder.build().prompt().system(systemPrompt);
+            applyChatHistory(prompt, sessionId, userMessageId);
+            String answer = prompt.user(userPrompt)
                     .tools(tools)
                     .call()
                     .content();
@@ -630,6 +637,22 @@ public class AiKnowledgeChatServiceImpl implements AiKnowledgeChatService {
             return "AI 服务暂时不可用，请稍后再试，或直接发起人工工单。";
         } finally {
             AiToolCallContext.clear();
+        }
+    }
+
+    /**
+     * 将 MySQL 中的 USER/ASSISTANT 历史注入当前 Prompt（不含本轮用户消息）。
+     */
+    private void applyChatHistory(ChatClient.ChatClientRequestSpec promptSpec,
+                                  Long sessionId,
+                                  Long excludeMessageId) {
+        List<Message> history = chatHistoryProvider.loadForPrompt(
+                sessionId,
+                excludeMessageId,
+                properties.getChat()
+        );
+        if (!history.isEmpty()) {
+            promptSpec.messages(history);
         }
     }
 

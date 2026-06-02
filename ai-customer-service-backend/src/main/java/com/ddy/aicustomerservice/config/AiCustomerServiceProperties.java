@@ -51,6 +51,21 @@ public class AiCustomerServiceProperties {
          * 管理员（运营与知识库治理）system prompt。
          */
         private String adminSystemPrompt;
+
+        /**
+         * 是否将本会话历史 USER/ASSISTANT 消息注入大模型（多轮上下文）。
+         */
+        private Boolean historyEnabled = true;
+
+        /**
+         * 最多加载多少条历史消息（仅 USER、ASSISTANT）。
+         */
+        private Integer maxHistoryMessages = 20;
+
+        /**
+         * 历史消息总字符上限（粗略控制 token，超出则从最早的消息丢弃）。
+         */
+        private Integer maxHistoryChars = 6000;
     }
 
     @Data

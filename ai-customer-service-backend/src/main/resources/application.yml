@@ -80,6 +80,9 @@ ai-customer-service:
     coarse-threshold-delta: 0.15
     vector-rrf-weight: 0.7
   chat:
+    history-enabled: true
+    max-history-messages: 20
+    max-history-chars: 6000
     system-prompt: |
       你是一名专业、礼貌、有耐心的售后智能客服助手。
       优先依据知识库片段回答；涉及订单/工单必须调用工具，禁止编造；用简体中文简洁分点回答。
