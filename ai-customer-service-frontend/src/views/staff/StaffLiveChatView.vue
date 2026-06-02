@@ -94,14 +94,19 @@ async function onEnd() {
   await loadLists();
 }
 
+function appendMessage(m: ChatMessageVO) {
+  if (messages.value.some((x) => x.id === m.id)) return;
+  messages.value.push(m);
+  lastMessageId.value = Math.max(lastMessageId.value, m.id);
+}
+
 async function onSend() {
   const text = input.value.trim();
   if (!text || !currentSessionId.value || sending.value) return;
   sending.value = true;
   try {
     const msg = await liveChatApi.staffSend(currentSessionId.value, { content: text });
-    messages.value.push(msg);
-    lastMessageId.value = Math.max(lastMessageId.value, msg.id);
+    appendMessage(msg);
     input.value = '';
     await scrollToBottom();
   } finally {
@@ -114,9 +119,7 @@ function startLiveWs() {
   if (!currentSessionId.value || !userStore.token) return;
   liveWs = connectLiveChatWs(currentSessionId.value, userStore.token, {
     onMessage: (m) => {
-      if (messages.value.some((x) => x.id === m.id)) return;
-      messages.value.push(m);
-      lastMessageId.value = Math.max(lastMessageId.value, m.id);
+      appendMessage(m);
       void scrollToBottom();
     },
     onSessionUpdate: () => {

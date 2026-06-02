@@ -18,7 +18,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 
+import jakarta.servlet.DispatcherType;
 import java.util.Arrays;
 
 /**
@@ -53,11 +55,18 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                // JWT 无 Session：把 SecurityContext 写入 request attribute，供 SseEmitter 等 ASYNC 派发复用
+                .securityContext(securityContext -> securityContext
+                        .securityContextRepository(new RequestAttributeSecurityContextRepository())
+                )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                         .accessDeniedHandler(jwtAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> {
+                    // 流式 SSE 完成/出错时的 ASYNC、ERROR 派发不再二次鉴权（首次 REQUEST 已校验 JWT）
+                    auth.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR)
+                            .permitAll();
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                     auth.requestMatchers(
                             "/api/auth/register",

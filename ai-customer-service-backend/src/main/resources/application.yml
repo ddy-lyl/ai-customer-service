@@ -13,6 +13,11 @@ spring:
   profiles:
     active: dev
 
+  security:
+    filter:
+      # 与 RequestAttributeSecurityContextRepository 配合，SSE 异步派发时仍执行 Security 过滤器链
+      dispatcher-types: request,async,error
+
   servlet:
     multipart:
       max-file-size: 20MB
@@ -111,7 +116,7 @@ ai-customer-service:
     similarity-threshold: 0.5
   handoff:
     enabled: true
-    rag-miss-auto: true
+    rag-miss-auto: false
     low-score-threshold: 0.55
     repeat-miss-count: 2
     user-keywords: 转人工,人工客服,找客服,真人,人工服务,要投诉

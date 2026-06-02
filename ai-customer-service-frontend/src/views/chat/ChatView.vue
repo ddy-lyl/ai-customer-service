@@ -261,20 +261,29 @@ async function onSend() {
 
   if (isLiveMode.value && currentSessionId.value) {
     sending.value = true;
+    const localUserId = messages.value[messages.value.length - 1]?.id;
     try {
       const msg = await liveChatApi.sendUserMessage(currentSessionId.value, {
         content: question
       });
-      const idx = messages.value.length - 1;
-      messages.value[idx] = mapApiMessage(msg);
+      if (messages.value.some((x) => x.id === msg.id)) {
+        const localIdx = messages.value.findIndex((x) => x.id === localUserId);
+        if (localIdx >= 0) messages.value.splice(localIdx, 1);
+      } else {
+        const localIdx = messages.value.findIndex((x) => x.id === localUserId);
+        if (localIdx >= 0) messages.value[localIdx] = mapApiMessage(msg);
+        else appendLiveMessage(msg);
+      }
       lastPollMessageId.value = Math.max(lastPollMessageId.value, msg.id);
-      const hint: DisplayMsg = {
-        id: `live-hint-${Date.now()}`,
-        role: 'ASSISTANT',
-        content: buildLiveModeHint(),
-        createTime: new Date().toISOString()
-      };
-      messages.value.push(hint);
+      // 人工已接入时不再插入 AI 占位回复，客服消息由 WebSocket 推送
+      if (serviceMode.value === 'WAITING_AGENT') {
+        messages.value.push({
+          id: `live-hint-${Date.now()}`,
+          role: 'ASSISTANT',
+          content: buildLiveModeHint(),
+          createTime: new Date().toISOString()
+        });
+      }
     } finally {
       sending.value = false;
       await scrollToBottom();

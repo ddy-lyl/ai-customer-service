@@ -353,8 +353,9 @@ http://localhost:5173
 说明：
 
 - 普通政策问题优先走 SSE 流式问答；
-- 检测到订单号、工单号、建单、转人工等关键词时，前端会切到同步 `/ask`，以便后端挂载 Tools；
-- `/ask/stream` 当前不挂载业务工具，主要用于知识问答和打字机效果。
+- 检测到订单号、工单号、建单、查单、转人工等关键词时，前端会切到同步 `/ask`，以便后端挂载 Tools；
+- `/ask/stream` 当前不挂载业务工具，主要用于知识问答和打字机效果；
+- 演示查单建议输入连续关键词 **「查订单」** 或订单号（如 `ORD202606010003`）。口语如「查我的订单」若未命中 `intent.ts` 中的子串规则，仍会走流式，模型可能口头描述工具但不会真正调用。
 
 ### 7.3 AI 建单
 
@@ -369,7 +370,7 @@ AI 创建工单会写入：
 
 ### 7.4 转人工和客服接待
 
-用户主动点击转人工，或 AI 回合后满足转人工策略时：
+用户主动点击转人工，或 AI 回合后满足转人工策略时（默认不含 RAG 未命中自动转人工，见 [10.5](#105-转人工策略)）：
 
 1. `chat_session.service_mode` 从 `AI` 变为 `WAITING_AGENT`。
 2. 系统创建咨询类转人工工单。
@@ -439,6 +440,12 @@ JWT 相关机制：
 - Redis 黑名单用于登出后 token 失效；
 - `UserTokenVersionService` 支持 token 版本，便于重置密码等场景使旧 token 失效；
 - `JwtSecretProdValidator` 在 `prod` Profile 下校验 JWT Secret 不能为空、不能使用默认值、长度至少 32。
+
+SSE 流式与异步鉴权（`/ask/stream`）：
+
+- 无 Session 场景下，`SecurityContext` 使用 `RequestAttributeSecurityContextRepository` 写入 request attribute，避免 `SseEmitter` 触发 Tomcat `ASYNC` 派发时登录态丢失；
+- `DispatcherType.ASYNC`、`ERROR` 的二次派发在首次 `REQUEST` 已校验 JWT 的前提下放行，防止流式结束时报 `AuthorizationDeniedException` 或 `response already committed`；
+- `application.yml` 中配置 `spring.security.filter.dispatcher-types: request,async,error`，与上述策略配合。
 
 ### 8.4 工单状态
 
@@ -565,7 +572,11 @@ ws://当前前端域名/ws/live-chat?token=<JWT>
 | `POST /api/ai/knowledge-chat/ask` | 同步返回，挂载业务 Tools，适合查单、建单、查工单、转人工 |
 | `POST /api/ai/knowledge-chat/ask/stream` | SSE 流式返回，当前不挂载业务 Tools，适合政策问答和打字机效果 |
 
-前端会通过 `src/utils/intent.ts` 判断问题是否包含订单号、工单号、建单、查单、转人工等关键词；命中时优先走同步接口，保证工具调用可用。
+前端通过 `src/utils/intent.ts` 的 `shouldUseSyncMode()` 路由：
+
+- 命中 `ORD…` / `TK…` 单号正则，或问题中包含配置短语（如 `查订单`、`申请售后`、`转人工` 等）→ 调用同步 `/ask`；
+- 匹配为 **连续子串**（例如必须包含「查订单」，「查我的订单」不会命中）→ 未命中则走 `/ask/stream`；
+- 聊天页「智能动作」开关关闭时，一律走流式，不触发工具。
 
 ### 10.3 角色 Prompt
 
@@ -597,23 +608,20 @@ Prompt 配置在 `application.yml` 的 `ai-customer-service.chat` 下。
 ai-customer-service:
   handoff:
     enabled: true
-    rag-miss-auto: true
+    rag-miss-auto: false   # 默认关闭：不因 RAG 未命中/低分自动转人工
     low-score-threshold: 0.55
     repeat-miss-count: 2
     user-keywords: 转人工,人工客服,找客服,真人,人工服务,要投诉
     refusal-phrases: 无法回答,没有相关,建议联系人工,不清楚,无法确定,联系人工客服
 ```
 
-触发来源：
+触发来源（`HandoffTriggerEvaluator`）：
 
-- 用户主动转人工；
-- 命中用户关键词；
-- RAG 未命中；
-- 召回最高分低于阈值；
-- AI 返回拒答或异常提示；
-- 连续未命中。
+- 用户点击「转人工」或消息命中 `user-keywords`；
+- AI 返回拒答短语（`refusal-phrases`）或服务异常提示；
+- 当 `rag-miss-auto: true` 时 additionally：RAG 未命中、召回分数低于阈值、连续未命中。
 
-当前实现中，非寒暄问题首次 RAG 未命中也可能触发转人工。演示效果明显，但真实企业系统通常会调高门槛或先追问澄清。
+当前默认 `rag-miss-auto: false`，政策类问答即使未命中知识库也不会自动排队人工；若需演示「检索失败即转人工」，可在 `application.yml` 或 `application-local.yml` 中改回 `true`。
 
 ---
 
@@ -837,8 +845,9 @@ npm run build
 | 向量库 | 使用 `SimpleVectorStore` 本地 JSON，适合单机演示，不适合多实例生产 |
 | 订单系统 | 订单为本地表演示数据，当前主要是查询，没有对接真实 OMS/ERP |
 | 工单与订单 | 工单处理不会自动更新订单退款、换货、物流等状态 |
-| 流式问答 | `/ask/stream` 当前不挂业务工具 |
-| 转人工策略 | RAG 首次未命中也可能转人工，演示友好但企业场景可能过于敏感 |
+| 流式问答 | `/ask/stream` 不挂业务工具；需口语化查单时扩展 `intent.ts` 或统一走同步 |
+| 转人工策略 | 默认 `rag-miss-auto: false`，仅关键词/拒答/异常等触发；可按演示需要开启 RAG 自动转人工 |
+| 同步路由 | `intent.ts` 为子串匹配，「查我的订单」与「查订单」行为不同 |
 | WebSocket | 握手校验 JWT；订阅会话级权限建议继续加固 |
 | 生产配置 | 需要补齐 prod/docker 配置、前端生产 API 地址和 HTTPS/WSS |
 | 初始化脚本 | 一键初始化会删除数据库，只适合本地 |
@@ -866,23 +875,52 @@ npm run build
 
 ### 16.2 为什么查订单没有触发工具？
 
-工具只挂在同步 `/ask` 接口。前端会根据关键词自动切换，但如果问题没有明显订单号或查单关键词，可能走流式接口。可以直接输入：
+工具只挂在同步 `/ask` 接口。前端 `shouldUseSyncMode()` 使用 **连续子串** 匹配，例如：
+
+| 用户输入 | 是否走同步 | 说明 |
+|----------|------------|------|
+| `查订单` | 是 | 命中短语「查订单」 |
+| `ORD202606010003 到哪了` | 是 | 命中订单号正则 |
+| `查我的订单` | 否 | 中间有「我的」，不包含连续子串「查订单」 |
+| `查最近订单` | 否 | 中间有「最近」 |
+
+未走同步时会调用 `/ask/stream`，模型可能在文案里写「正在调用 LIST_MY_ORDERS」，但 **不会真正执行工具**，意图也常显示为 `KNOWLEDGE_QA`。
+
+演示建议直接输入：
 
 ```text
+查订单
 查订单 ORD202606010003
 ```
 
-### 16.3 为什么开发数据库端口是 8090？
+并确认聊天页 **「智能动作」** 已开启。长期可在 `src/utils/intent.ts` 增加「我的订单」等短语或正则 `查.{0,4}订单`。
+
+### 16.3 流式问答报错 Access Denied 或连接中断？
+
+多出现在 `/ask/stream`：`SseEmitter` 触发 Servlet `ASYNC` 派发时，JWT 无状态场景下 `SecurityContext` 未绑定到 request，二次鉴权失败。项目已在 `SecurityConfig` 使用 `RequestAttributeSecurityContextRepository`，并对 `ASYNC`/`ERROR` 派发做放行；同时配置 `spring.security.filter.dispatcher-types`。修改后需 **重启后端**。
+
+### 16.4 为什么开发数据库端口是 8090？
 
 当前 `application-dev.yml` 配置为 `localhost:8090`。如果你的 MySQL 是默认 `3306`，请在 `application-local.yml` 或 `application-dev.yml` 中调整 URL。
 
-### 16.4 为什么转人工太容易触发？
+### 16.5 为什么还会自动转人工？
 
-当前配置启用了 `rag-miss-auto`，非寒暄问题 RAG 未命中时可能自动转人工。演示时方便体现人机协同，真实业务建议调高触发门槛。
+默认 `rag-miss-auto: false`，**不会因知识库未命中或低分自动转人工**。仍可能触发的情况：
 
-### 16.5 为什么生产前端还指向 localhost？
+- 用户说「转人工」等 `user-keywords`；
+- AI 回答包含 `refusal-phrases` 中的短语（如「建议联系人工」）；
+- 用户点击聊天页「转人工」按钮。
+
+若需恢复「RAG 失败即转人工」演示，将 `ai-customer-service.handoff.rag-miss-auto` 设为 `true`。
+
+### 16.6 为什么生产前端还指向 localhost？
 
 `.env.production` 当前写的是 `VITE_API_BASE=http://localhost:8080`，这是本地演示值。部署到服务器前需要改成真实 API 域名。
+
+### 16.7 在线客服消息重复或用户端 AI 仍插话？
+
+- 坐席发消息后若同一条显示两次：HTTP 返回与 WebSocket 推送各追加一次，前端已按消息 `id` 去重（`StaffLiveChatView`）。
+- 人工已接入（`HUMAN`）后用户发消息：不应再插入 AI 占位回复，仅 `WAITING_AGENT` 排队时提示等待（`ChatView`）。
 
 ---
 
